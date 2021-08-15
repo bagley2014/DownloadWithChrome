@@ -1,0 +1,24 @@
+{
+	"name": "downloadwithchrome",
+	"version": "0.1.0",
+	"description": "Download files from a directory using chrome cookies",
+	"main": "index.js",
+	"bin": {
+		"dwc": "./index.js"
+	},
+	"scripts": {
+		"help": "node . --help"
+	},
+	"author": "Daryl Bagley",
+	"license": "ISC",
+	"dependencies": {
+		"cheerio": "^1.0.0-rc.10",
+		"chrome-cookies-secure": "github:bertrandom/chrome-cookies-secure",
+		"commander": "^8.1.0",
+		"got": "^11.8.2"
+	},
+	"type": "module",
+	"devDependencies": {
+		"eslint": "^7.32.0"
+	}
+}
