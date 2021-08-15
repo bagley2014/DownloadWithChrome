@@ -7,27 +7,45 @@ import path from 'path';
 
 // This file contains the main body of the app and the functions it uses
 
-const getChromeCookies = url => () => getCookiesPromised(url.origin, 'jar');
+const setupCookies = url => () => chainPromises(null, [
+	() => getCookiesPromised(url.origin, 'jar'),
+	cookieJar => got.defaults.options.cookieJar = cookieJar,
+]);
 
-const addCookiesToGot = cookieJar => got.defaults.options.cookieJar = cookieJar;
+const getLinksFromUrl = (url, options) => () => chainPromises(null, [
+	() => got(url, { resolveBodyOnly: true, responseType: 'text' })
+		.catch(err => {
+			console.error(`${url} | ${err.message}`);
+			return Promise.reject(err);
+		}),
+	cheerio.load,
+	$ => Promise.allSettled(
+		$('td a')
+			.toArray()
+			.map(element => $(element).attr('href'))
+			.filter(href => href.match('^[^\\\\/]'))
+			.map(href => {
+				if (options.recursive && href.match('[\\\\/]$')) {
+					const childDir = new URL(url);
+					childDir.pathname += `/${href}`;
+					return getLinksFromUrl(childDir, options)();
+				} else if (!options.filter || href.match(options.filter)) {
+					const fileToDownload = new URL(url);
+					fileToDownload.pathname += `/${href}`;
+					return fileToDownload;
+				}
+				return Promise.reject(`${href} | Didn't match filter`);
+			}),
+	),
+	links => links
+		.filter(link => link.status == 'fulfilled')
+		.map(link => link.value)
+		.flat(),
+]);
 
-const getDirectoryHtml = url => () => got(url).text();
-
-const getLinksFromDirectoyHtml =
-	(url, options) => $ => $('td a')
-		.toArray()
-		.map(element => $(element).attr('href'))
-		.filter(href => href.slice(-1).match('[^\\\\/]'))
-		.filter(href => !options.filter || href.match(options.filter))
-		.map(href => {
-			const fileToDownload = new URL(url);
-			fileToDownload.pathname += `/${href}`;
-			return fileToDownload;
-		});
-
-const getOutputLocations = options => urls => urls.map(
+const addOutputLocations = outputDir => urls => urls.map(
 	url => ({
-		out: path.join(process.cwd(), options.output, decodeURI(url.pathname)),
+		out: path.join(process.cwd(), outputDir, decodeURI(url.pathname)),
 		url,
 	}),
 );
@@ -46,42 +64,44 @@ const logFilesToBeDownloaded = verbose => urls => {
 	}
 };
 
-const rejectOnDryRun = dryrun => prevResult => dryrun ? Promise.reject({ name: 'dryrun' }) : Promise.resolve(prevResult);
+const rejectOnDryRun = dryrun => prevResult => dryrun ? Promise.reject({ name: 'dryrun_option_set' }) : Promise.resolve(prevResult);
 
-const downloadFileLists =
-urlLists => Promise.all(
-	urlLists.map(
-		urlList => chainPromises([
-			() => new ResultCounts(),
-			...urlList.map(url => downloadFile(url)),
-		]),
-	),
-)
-	.then(results => results.reduce((cumulative, current) => cumulative.add(current)))
-	.then(console.log);
+const downloadFiles =
+	verbose => urls => chainPromises(urls, [
+		splitArray,
+		sideEffect(
+			urlLists => verbose ?
+				console.log(`Download list lengths: ${urlLists.map(array => array.length)}`) :
+				null,
+		),
+		sideEffect(() => console.log('Downloads started...')),
+		urlLists => Promise.all(
+			urlLists.map(
+				urlList => chainPromises(new ResultCounts(), urlList.map(url => downloadFile(url, verbose))),
+			),
+		),
+		results => results.reduce((cumulative, current) => cumulative.add(current)),
+		sideEffect(() => console.log('All downloads finished')),
+		console.log,
+	]);
 
-export const main = async (url, options, _command) => chainPromises([
+export const main = async (url, options, _command) => chainPromises(null, [
+	sideEffect(() => options.debug ? console.log('Input url:', url) : null),
 	sideEffect(() => options.debug ? console.log('Command line options:', options) : null),
-	getChromeCookies(url),
-	addCookiesToGot,
-	getDirectoryHtml(url),
-	cheerio.load,
-	getLinksFromDirectoyHtml(url, options),
-	getOutputLocations(options),
+	setupCookies(url),
+	sideEffect(() => console.log('Determining files to download...')),
+	getLinksFromUrl(url, options),
+	addOutputLocations(options.output),
 	sideEffect(logFilesToBeDownloaded(options.dryRun || options.debug)),
 	rejectOnDryRun(options.dryRun),
-	splitArray,
-	sideEffect(
-		arrays => options.debug
-			? console.log(`Download list lengths: ${arrays.map(array => array.length)}`)
-			: null,
-	),
-	downloadFileLists,
+	sideEffect(list => console.log(`Found ${list.length} files to download`)),
+	downloadFiles(options.debug),
 ])
 	.catch(
 		reason => (
-			reason.name == 'dryrun' ? console.log('Dry run complete; no files downloaded')
-			: console.log(reason)
+			reason.name == 'dryrun_option_set' ? console.log('Dry run complete; no files downloaded') :
+			reason.name == 'HTTPError' ? console.log('There may be an error in your url, or perhaps the server is down; consider trying it in a browser') :
+			console.log(reason.message)
 		),
 	);
 

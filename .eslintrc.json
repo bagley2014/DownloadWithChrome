@@ -120,7 +120,7 @@
 				"before": true
 			}
 		],
-		"line-comment-position": "error",
+		"line-comment-position": "off",
 		"linebreak-style": [
 			"error",
 			"windows"
@@ -184,7 +184,7 @@
 		"no-implicit-coercion": "error",
 		"no-implicit-globals": "error",
 		"no-implied-eval": "error",
-		"no-inline-comments": "error",
+		"no-inline-comments": "off",
 		"no-invalid-this": "error",
 		"no-iterator": "error",
 		"no-label-var": "error",
@@ -256,7 +256,7 @@
 		"no-useless-return": "error",
 		"no-var": "error",
 		"no-void": "error",
-		"no-warning-comments": "error",
+		"no-warning-comments": "warn",
 		"no-whitespace-before-property": "error",
 		"nonblock-statement-body-position": "error",
 		"object-curly-newline": "error",
@@ -277,7 +277,17 @@
 			"error",
 			"always"
 		],
-		"operator-linebreak": "error",
+		"operator-linebreak": [
+			"error",
+			"before",
+			{
+				"overrides": {
+					"?": "after",
+					":": "after",
+					"=": "after"
+				}
+			}
+		],
 		"padded-blocks": "off",
 		"padding-line-between-statements": "error",
 		"prefer-arrow-callback": "error",

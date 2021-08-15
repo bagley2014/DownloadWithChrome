@@ -6,9 +6,9 @@ import { pipeline } from 'stream/promises';
 
 export const got = gotLib.extend({ mutableDefaults: true });
 
-export const chainPromises = thens => thens.reduce(
+export const chainPromises = (initialValue, thens) => thens.reduce(
 	(chain, nextFunction) => chain.then(nextFunction),
-	Promise.resolve(),
+	Promise.resolve(initialValue),
 );
 
 export const sideEffect = fn => r => {
@@ -55,7 +55,7 @@ export class ResultCounts {
 	}
 }
 
-const doDownloadFile = urlObj => async results => {
+const doDownloadFile = (urlObj, verbose) => async results => {
 	const { url, out } = urlObj;
 	const fileName = path.basename(out);
 
@@ -65,12 +65,12 @@ const doDownloadFile = urlObj => async results => {
 			got.stream(url),
 			createWriteStream(out),
 		);
-		console.log(`Download successful | ${fileName} `);
+		if (verbose) console.log(`Download successful | ${fileName} `);
 		return results.addSuccess();
 	} catch (error) {
-		console.error(`Download failed | ${fileName} | ${error.message}`);
+		if (verbose) console.error(`Download failed | ${fileName} | ${error.message}`);
 		return results.addFail();
 	}
 };
 
-export const downloadFile = urlObj => doDownloadFile(urlObj);
+export const downloadFile = (urlObj, verbose = false) => doDownloadFile(urlObj, verbose);

@@ -19,7 +19,7 @@ const makeUrlObject = urlString => {
 };
 
 program
-	.version('0.1.0', '-v, --version', 'output the current version')
+	.version('0.2.0', '-v, --version', 'output the current version')
 	.description('Download files from a directory page using chrome cookies')
 	.argument('<url>', 'url of directory page to download from', makeUrlObject)
 	.option('--dry-run', 'quit the application before doing any downloads')

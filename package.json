@@ -1,6 +1,6 @@
 {
 	"name": "downloadwithchrome",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Download files from a directory using chrome cookies",
 	"main": "index.js",
 	"bin": {
