@@ -101,7 +101,7 @@ export const main = async (url, options, _command) => chainPromises(null, [
 		reason => (
 			reason.name == 'dryrun_option_set' ? console.log('Dry run complete; no files downloaded') :
 			reason.name == 'HTTPError' ? console.log('There may be an error in your url, or perhaps the server is down; consider trying it in a browser') :
-			console.log(reason.message)
+			console.log(`Script failed | Error: ${reason.message}`)
 		),
 	);
 
